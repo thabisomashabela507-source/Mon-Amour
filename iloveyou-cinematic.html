@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>From the Stars, With Love</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Cormorant Garamond', serif;
+    }
+
+    /* ── CANVAS (stars + nebula + heart) ── */
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+
+    /* ── UI overlay ── */
+    #ui {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+      padding-bottom: 8vh;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.2rem, 8vw, 5rem);
+      font-weight: 400;
+      color: #fff;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translateY(30px);
+      text-shadow:
+        0 0 40px #ff6aab,
+        0 0 80px #c2006644,
+        0 2px 4px #0008;
+      transition: opacity 2.5s ease, transform 2.5s ease;
+      margin-bottom: 14px;
+    }
+
+    #subtitle {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: clamp(1rem, 3vw, 1.6rem);
+      color: #ffcce0cc;
+      letter-spacing: 0.3em;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 2s ease 0.6s, transform 2s ease 0.6s;
+      margin-bottom: 36px;
+    }
+
+    #btn {
+      pointer-events: all;
+      background: none;
+      border: 1px solid #ff6aab88;
+      color: #ffcce0;
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      padding: 14px 40px;
+      border-radius: 50px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 1.5s ease 1.2s,
+                  background 0.3s, border-color 0.3s,
+                  box-shadow 0.3s, transform 0.15s;
+      backdrop-filter: blur(6px);
+      background: #ffffff08;
+    }
+    #btn:hover {
+      background: #ff6aab22;
+      border-color: #ff6aab;
+      box-shadow: 0 0 30px #ff6aab55;
+      transform: scale(1.04);
+    }
+    #btn:active { transform: scale(0.97); }
+
+    .visible { opacity: 1 !important; transform: translateY(0) !important; }
+
+    /* ── Loading screen ── */
+    #loading {
+      position: fixed; inset: 0;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 100;
+      transition: opacity 1.5s ease;
+    }
+    #loading p {
+      color: #ffffff44;
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .loader-bar {
+      width: 180px; height: 1px;
+      background: #ffffff11;
+      position: relative; overflow: hidden;
+    }
+    .loader-fill {
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, #ff6aab, transparent);
+      animation: loaderSweep 1.8s ease-in-out infinite;
+    }
+    @keyframes loaderSweep {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(100%); }
+    }
+
+    /* ── Message panel (shown on button click) ── */
+    #msgPanel {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+    #msgPanel.show { opacity: 1; pointer-events: all; }
+    #msgBox {
+      background: linear-gradient(160deg, #0d001888cc, #1a000d99);
+      border: 1px solid #ff6aab44;
+      border-radius: 24px;
+      padding: 48px 52px;
+      max-width: 480px;
+      width: 88vw;
+      max-height: 88vh;
+      overflow-y: auto;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 80px #c2006622, 0 4px 40px #0008;
+    }
+    #msgBox .bigHeart {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 20px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.15); }
+    }
+    #msgBox h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.7rem;
+      color: #fff;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      text-shadow: 0 0 20px #ff6aab;
+    }
+    #msgBox p {
+      color: #ffcce0bb;
+      font-style: italic;
+      font-size: 1rem;
+      line-height: 1.85;
+      margin-bottom: 30px;
+    }
+    #closeBtn {
+      background: none;
+      border: 1px solid #ff6aab66;
+      color: #ffcce0;
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      padding: 11px 32px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    #closeBtn:hover { background: #ff6aab22; border-color: #ff6aab; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <p>Travelling through space</p>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<!-- Main canvas -->
+<canvas id="c"></canvas>
+
+<!-- UI -->
+<div id="ui">
+  <div id="title">I Love You</div>
+  <div id="subtitle">written in the stars, meant for you</div>
+  <button id="btn" onclick="openMsg()">Open My Heart ✦</button>
+</div>
+
+<!-- Message panel -->
+<div id="msgPanel">
+  <div id="msgBox">
+    <span class="bigHeart">💖</span>
+    <h2>Kgothatso!!</h2>
+    <p>
+      Since from day one seeing you was the most joyful thing I've ever felt le nou ke sa no wisha o kare ka le lengwe la matšatši re tlaba more than friends hence baratani se ke se kgopelago ke one chance to show you what I'm capable of when I say I'm in love with you.
+    </p>
+    <button id="closeBtn" onclick="closeMsg()">Close ✦</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H, cx, cy;
+let stars = [];
+let nebulaParts = [];
+let heartParticles = [];
+let phase = 0; // 0=warp, 1=nebula, 2=heart forming, 3=done
+let t = 0;
+let animId;
+
+/* ─── RESIZE ─── */
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2; cy = H / 2;
+}
+window.addEventListener('resize', () => { resize(); buildStars(); });
+resize();
+
+/* ─── HEART POINT (parametric) ─── */
+function heartXY(angle, scale) {
+  const x = 16 * Math.pow(Math.sin(angle), 3);
+  const y = -(13*Math.cos(angle) - 5*Math.cos(2*angle) - 2*Math.cos(3*angle) - Math.cos(4*angle));
+  return { x: cx + x*scale, y: cy + y*scale - H*0.04 };
+}
+
+/* ─── BUILD STARS (warp field) ─── */
+function buildStars() {
+  stars = [];
+  const n = Math.min(W * H / 2200, 600);
+  for (let i = 0; i < n; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = 10 + Math.random() * Math.max(W, H) * 0.75;
+    stars.push({
+      angle, dist,
+      x: cx + Math.cos(angle) * dist,
+      y: cy + Math.sin(angle) * dist,
+      baseX: cx + Math.cos(angle) * dist,
+      baseY: cy + Math.sin(angle) * dist,
+      size: 0.3 + Math.random() * 1.2,
+      speed: 0.3 + Math.random() * 1.8,
+      bright: 0.4 + Math.random() * 0.6,
+      hue: Math.random() < 0.15 ? `hsl(${200+Math.random()*60},80%,85%)` : '#fff',
+      twinkle: Math.random() * Math.PI * 2,
+    });
+  }
+}
+buildStars();
+
+/* ─── NEBULA WISPS ─── */
+function buildNebula() {
+  nebulaParts = [];
+  const count = 120;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 30 + Math.random() * Math.min(W,H) * 0.38;
+    nebulaParts.push({
+      x: cx + Math.cos(angle)*r,
+      y: cy + Math.sin(angle)*r,
+      tx: cx + (Math.random()-0.5)*Math.min(W,H)*0.5,
+      ty: cy + (Math.random()-0.5)*Math.min(W,H)*0.5,
+      size: 60 + Math.random()*120,
+      hue: Math.random()<0.5 ? `hsla(330,90%,50%,` : `hsla(280,80%,45%,`,
+      alpha: 0, prog: 0,
+    });
+  }
+}
+
+/* ─── HEART PARTICLES ─── */
+function buildHeartParticles() {
+  heartParticles = [];
+  const total = 280;
+  const scale = Math.min(W, H) * 0.036;
+  for (let i = 0; i < total; i++) {
+    const angle = (i / total) * Math.PI * 2;
+    const dest  = heartXY(angle, scale);
+    const startAngle = Math.random() * Math.PI * 2;
+    const startDist  = Math.min(W,H) * (0.5 + Math.random()*0.5);
+    heartParticles.push({
+      x:  cx + Math.cos(startAngle)*startDist,
+      y:  cy + Math.sin(startAngle)*startDist,
+      tx: dest.x, ty: dest.y,
+      size: 1.2 + Math.random()*2.2,
+      hue: `hsl(${330 + Math.random()*40},100%,${60+Math.random()*20}%)`,
+      alpha: 0, prog: 0,
+      delay: Math.random() * 0.4,
+      trail: [],
+    });
+  }
+}
+
+/* ─── DRAW ─── */
+function draw() {
+  t++;
+
+  /* phases */
+  if (phase === 0 && t > 90)  { phase = 1; buildNebula(); }
+  if (phase === 1 && t > 210) { phase = 2; buildHeartParticles(); }
+  if (phase === 2 && t > 420) { phase = 3; showUI(); }
+
+  /* deep space bg */
+  ctx.fillStyle = `rgba(0,0,4,${phase < 2 ? 0.18 : 0.08})`;
+  ctx.fillRect(0, 0, W, H);
+
+  /* subtle radial atmosphere */
+  if (phase >= 1) {
+    const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W,H)*0.55);
+    rg.addColorStop(0,   'hsla(330,80%,15%,0.12)');
+    rg.addColorStop(0.5, 'hsla(280,70%,10%,0.08)');
+    rg.addColorStop(1,   'transparent');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /* STARS */
+  stars.forEach(s => {
+    s.twinkle += 0.025;
+    const tw = 0.5 + 0.5 * Math.sin(s.twinkle);
+
+    if (phase === 0) {
+      /* warp: streak toward center */
+      const progress = Math.min(t / 90, 1);
+      const warpStretch = 1 + progress * 6 * s.speed;
+      const dx = s.baseX - cx, dy = s.baseY - cy;
+      const len = Math.sqrt(dx*dx+dy*dy);
+      const nx = dx/len, ny = dy/len;
+      s.x = cx + dx * (1 - progress * 0.3);
+      s.y = cy + dy * (1 - progress * 0.3);
+      ctx.save();
+      ctx.strokeStyle = s.hue;
+      ctx.globalAlpha = s.bright * tw * (0.5 + progress*0.5);
+      ctx.lineWidth = s.size * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + nx*s.size*warpStretch*3, s.y + ny*s.size*warpStretch*3);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      /* normal twinkling stars */
+      ctx.globalAlpha = s.bright * tw * 0.6;
+      ctx.fillStyle = s.hue;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size * (0.7 + tw*0.3), 0, Math.PI*2);
+      ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+
+  /* NEBULA */
+  if (phase >= 1) {
+    const nebulaT = Math.min((t - 90) / 120, 1);
+    nebulaParts.forEach(n => {
+      n.prog = Math.min(n.prog + 0.006, 1);
+      const ease = 1 - Math.pow(1 - n.prog, 3);
+      const nx = n.x + (n.tx - n.x) * ease;
+      const ny = n.y + (n.ty - n.y) * ease;
+      n.alpha = Math.min(n.prog * 0.25, 0.18) * nebulaT;
+
+      const rg = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.size);
+      rg.addColorStop(0,   n.hue + n.alpha + ')');
+      rg.addColorStop(0.5, n.hue + n.alpha*0.5 + ')');
+      rg.addColorStop(1,   n.hue + '0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(nx, ny, n.size, 0, Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  /* HEART PARTICLES */
+  if (phase >= 2) {
+    const heartT = (t - 210) / 200;
+    heartParticles.forEach(p => {
+      const local = Math.max(0, heartT - p.delay);
+      p.prog = Math.min(local / 0.7, 1);
+      const ease = p.prog < 1 ? 1 - Math.pow(1-p.prog, 4) : 1;
+
+      const px = p.x + (p.tx - p.x) * ease;
+      const py = p.y + (p.ty - p.y) * ease;
+      p.alpha = Math.min(p.prog * 2, 1);
+
+      /* glow */
+      const glowR = p.size * (3 + (1-p.prog)*4);
+      const rg = ctx.createRadialGradient(px,py,0,px,py,glowR);
+      rg.addColorStop(0,   p.hue.replace('hsl','hsla').replace(')', `,${p.alpha * 0.5})`));
+      rg.addColorStop(1,   p.hue.replace('hsl','hsla').replace(')', ',0)'));
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(px, py, glowR, 0, Math.PI*2);
+      ctx.fill();
+
+      /* core */
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.hue;
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    /* Heart outline glow when done forming */
+    if (heartT > 0.8) {
+      const alpha = Math.min((heartT - 0.8) / 0.5, 1) * 0.35;
+      const scale = Math.min(W, H) * 0.036;
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,100,160,${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ff6aab';
+      ctx.shadowBlur = 30;
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const a = (i / 200) * Math.PI * 2;
+        const pt = heartXY(a, scale);
+        i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+
+      /* inner fill glow */
+      const fg = ctx.createRadialGradient(cx, cy-H*0.02, 0, cx, cy-H*0.02, Math.min(W,H)*0.22);
+      fg.addColorStop(0,   `rgba(255,50,100,${alpha*0.3})`);
+      fg.addColorStop(0.6, `rgba(180,0,60,${alpha*0.1})`);
+      fg.addColorStop(1,   'transparent');
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const a = (i / 200) * Math.PI * 2;
+        const pt = heartXY(a, scale);
+        i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  animId = requestAnimationFrame(draw);
+}
+
+/* ─── SHOW UI ─── */
+function showUI() {
+  setTimeout(() => {
+    document.getElementById('title').classList.add('visible');
+    document.getElementById('subtitle').classList.add('visible');
+    document.getElementById('btn').classList.add('visible');
+  }, 300);
+}
+
+/* ─── MESSAGE PANEL ─── */
+function openMsg() {
+  document.getElementById('msgPanel').classList.add('show');
+}
+function closeMsg() {
+  document.getElementById('msgPanel').classList.remove('show');
+}
+
+/* ─── LOADING ─── */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const el = document.getElementById('loading');
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 1500);
+    draw();
+  }, 1800);
+});
+</script>
+</body>
+</html>
